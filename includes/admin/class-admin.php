@@ -36,7 +36,45 @@ class Admin {
 	function __construct() {
 		add_action( 'admin_menu', array( $this, 'add_admin_pages' ) );
 		add_action( 'admin_init', array( $this, 'admin_tables' ) );
+		if ( is_network_admin() ) {
+			add_action( 'network_admin_menu', array( $this, 'add_mu_pages' ) );
+		}
 	}
+
+
+
+	public function add_mu_pages() {
+		$publications_hook = add_menu_page( __( 'Публикации', IBC_TEXTDOMAIN ), __( 'Публикации', IBC_TEXTDOMAIN ), 'manage_options', 'publications', array( $this, 'render_mu_pages' ), 'dashicons-book-alt', '6' );
+		$genres_hook = add_submenu_page( 'publications', __( 'Жанры', IBC_TEXTDOMAIN ), __( 'Жанры', IBC_TEXTDOMAIN ), 'manage_options', 'genres', array( $this, 'render_mu_pages' ) );
+		add_action( "load-$publications_hook", function () {
+			require_once IBC_INCLUDES . 'admin/class-admin-table-publications.php';
+			$GLOBALS[ 'Publications_List_Table' ] = new Publications_List_Table();
+		} );
+		add_action( "load-$genres_hook", function () {
+			require_once IBC_INCLUDES . 'admin/class-admin-table-genres.php';
+			$GLOBALS[ 'Genres_List_Table' ] = new Genres_List_Table();
+		} );
+	}
+
+
+
+	public function render_mu_pages() {
+		$screen = get_current_screen();
+		wp_enqueue_style( 'flexboxgrid' );
+		wp_enqueue_script( 'select2' );
+		wp_enqueue_style( 'select2' );
+		wp_add_inline_script( 'select2', "jQuery( '.select2' ).select2();", 'after' );
+		if ( preg_match( '/toplevel_page_publications-network$/', $screen->id ) ) {
+			$action = 'publications';
+			$nonce = wp_create_nonce( 'publications' );
+			include IBC_VIEWS . 'tables/publications.php';
+		} elseif ( preg_match( '/genres-network$/', $screen->id ) ) {
+			$action = 'genres';
+			$nonce = wp_create_nonce( 'genres' );
+			include IBC_VIEWS . 'tables/genres.php';
+		}
+	}
+
 
 
 	public function admin_tables() {
@@ -48,12 +86,8 @@ class Admin {
 		$readers_hook = add_menu_page( __( 'Читатели', IBC_TEXTDOMAIN ), __( 'Читатели', IBC_TEXTDOMAIN ), 'manage_options', 'readers', array( $this, 'render_page' ), 'dashicons-groups', 34 );
 		$departments_hook = add_submenu_page( 'readers', __( 'Подразделенния', IBC_TEXTDOMAIN ), __( 'Подразделенния', IBC_TEXTDOMAIN ), 'manage_options', 'departments', array( $this, 'render_page' ) );
 		$issuances_hook = add_menu_page( __( 'Выдачи', IBC_TEXTDOMAIN ), __( 'Выдачи', IBC_TEXTDOMAIN ), 'manage_options', 'issuances', array( $this, 'render_page' ), 'dashicons-download', 36 );
-		// $add_departments_hook = add_submenu_page( 'readers', __( 'Добавить подразделение', IBC_TEXTDOMAIN ), __( 'Добавить подразделение', IBC_TEXTDOMAIN ), 'manage_options', 'add_departments', array( $this, 'render_page' ) );
 		// $copies_hook = add_menu_page( __( 'Фонды', IBC_TEXTDOMAIN ), __( 'Фонды', IBC_TEXTDOMAIN ), 'manage_options', 'copies', array( $this, 'render_page' ), 'dashicons-welcome-add-page', 35 );
-		// $add_copies_hook = add_submenu_page( 'copies', __( 'Добавить книгу', IBC_TEXTDOMAIN ), __( 'Добавить книгу', IBC_TEXTDOMAIN ), 'manage_options', 'add_copies', array( $this, 'render_page' ) );
 		// $add_issuances_hook = add_submenu_page( 'issuances', __( 'Оформление выдачи', IBC_TEXTDOMAIN ), __( 'Оформление выдачи', IBC_TEXTDOMAIN ), 'manage_options', 'add_issuances', array( $this, 'render_page' ) );
-		// $add_reader_hook = add_submenu_page( 'readers', __( 'Добавить читателя', IBC_TEXTDOMAIN ), __( 'Добавить читателя', IBC_TEXTDOMAIN ), 'manage_options', 'add_reader', array( $this, 'render_page' ) );
-		// add_options_page( __( 'ИБЦ', IBC_TEXTDOMAIN ), __( 'ИБЦ', IBC_TEXTDOMAIN ), 'manage_options', IBC_SLUG, array( $this, 'render_page' ) );
 		// add_action( "load-$copies_hook", array( $this, 'copies_table_load' ) );
 		// add_action( "load-$readers_hook", array( $this, 'readers_table_load' ) );
 		// add_action( "load-$issuances_hook", array( $this, 'issuances_table_load' ) );
@@ -95,17 +129,6 @@ class Admin {
 		// 	submit_button();
 		// 	$content = ob_get_contents();
 		// 	ob_end_clean();
-		// } elseif ( preg_match( '/page_add_reader$/', $screen->id ) ) {
-		// 	$content = $this->readers_form_render();
-		// } 
-		// 	$content = $this->departments_table_render();
-		// } elseif ( preg_match( '/page_add_departments$/', $screen->id ) ) {
-		// 	// добавление контента страницы (форма)
-		// } elseif ( preg_match( '/issuances$/', $screen->id ) ) {
-		// 	$content = $this->issuances_form_render();
-		// } elseif ( preg_match( '/add_issuances$/', $screen->id ) ) {
-		// 	// добавление контента страницы (форма)
-		// }
 		if ( preg_match( '/toplevel_page_readers$/', $screen->id ) ) {
 			$action = 'readers';
 			$nonce = wp_create_nonce( 'readers' );

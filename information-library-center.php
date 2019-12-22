@@ -68,7 +68,7 @@ class Setup {
 		$plugin = isset( $_REQUEST[ 'plugin' ] ) ? $_REQUEST[ 'plugin' ] : '';
 		check_admin_referer( "activate-plugin_{$plugin}" );
 		$sites = get_sites();
-		$this->create_main_tables();
+		self::create_main_tables();
 		if ( is_array( $sites ) && ! empty( $sites ) ) {
 			foreach ( $sites as $site ) {
 				self::add_roles( $site );
@@ -101,6 +101,7 @@ class Setup {
 	}
 
 
+
 	protected static function add_roles( $site ) {
 		switch_to_blog( $site->blog_id );
 		add_role( 'librarian', __( 'Библиотекарь', IBC_TEXTDOMAIN ), array(
@@ -108,6 +109,7 @@ class Setup {
 		) );
 		restore_current_blog();
 	}
+
 
 
 	protected static function remove_roles( $site ) {
@@ -122,15 +124,45 @@ class Setup {
 		global $wpdb;
 		require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
 		$sql_formats = array(
-			'authors' => '',
-			'phouses' => '',
-			'publications' => '',
+			'authors' => 'CREATE TABLE %1$s (
+				id bigint(20) NOT NULL AUTO_INCREMENT,
+				first_name varchar(55) DEFAULT "" NOT NULL,
+				last_name varchar(55) DEFAULT "" NOT NULL,
+				middle_name varchar(55) DEFAULT "" NOT NULL,
+				sex varchar(20) DEFAULT "" NOT NULL,
+				PRIMARY KEY (id) ) %2$s;',
+			'publishing_houses' => 'CREATE TABLE %1$s (
+				id bigint(20) NOT NULL AUTO_INCREMENT,
+				name varchar(200) NOT NULL,
+				PRIMARY KEY (id) ) %2$s;',
+			'publications' => 'CREATE TABLE %1$s (
+				id bigint(20) NOT NULL AUTO_INCREMENT,
+				title varchar(200) NOT NULL,
+				publishing_house bigint(20),
+				annotation varchar(1000) NOT NULL,
+				isbn varchar(15) NOT NULL,
+				year bigint(4) NOT NULL,
+				publishing_houses bigint(20),
+				PRIMARY KEY (id) ) %2$s;',
 			'genres' => 'CREATE TABLE %1$s (
 				id bigint(20) NOT NULL AUTO_INCREMENT,
 				name varchar(200) NOT NULL,
 				parent bigint(20) DEFAULT 0 NOT NULL,
 				PRIMARY KEY (id) ) %2$s;',
 		);
+		foreach ( $sql_formats as $key => $format ) {
+			$table_name = sprintf(
+				'%1$s%2$s_%3$s',
+				$wpdb->get_blog_prefix(),
+				IBC_SLUG,
+				$key
+			);
+			if ( $wpdb->get_var( "SHOW TABLES LIKE '$table_name'") != $table_name ) {
+				$charset = $wpdb->get_charset_collate();
+				$sql = sprintf( $format, $table_name, $charset );
+				dbDelta( $sql );
+			}
+		}
 	}
 
 
@@ -153,6 +185,7 @@ class Setup {
 				librarian bigint(20),
 				clearance_date datetime NOT NULL,
 				return_date datetime NOT NULL,
+				status varchar(10) NOT NULL,
 				PRIMARY KEY (id) ) %2$s;',
 			'departments' => 'CREATE TABLE %1$s (
 				id bigint(20) NOT NULL AUTO_INCREMENT,
@@ -168,6 +201,7 @@ class Setup {
 				date_added datetime NOT NULL,
 				librarian bigint(20) NOT NULL,
 				department bigint(20),
+				status varchar(10) NOT NULL,
 				PRIMARY KEY (id) ) %2$s;',
 		);
 		foreach ( $sql_formats as $key => $format ) {
@@ -200,7 +234,6 @@ class Setup {
 		add_action( 'wp_insert_site', array( $this, 'create_tables' ), 10, 1 );
 		add_action( 'wp_insert_site', array( $this, 'add_roles' ), 10, 1 );
 		add_action( 'plugins_loaded', array( $this, 'textdomain' ) );
-		add_action( 'init', array( $this, 'register_objects' ) );
 		if ( is_admin() ) {
 			if ( wp_doing_ajax() ) {
 				require_once IBC_INCLUDES . 'ajax/class-ajax.php';
@@ -230,146 +263,6 @@ class Setup {
 		load_plugin_textdomain( IBC_TEXTDOMAIN, false, IBC_LANGUAGES );
 	}
 
-
-
-	function register_objects() {
-		$publication_args = array(
-			'labels'             => array(
-				'name'               => __( 'Публикации', IBC_TEXTDOMAIN ),
-				'singular_name'      => __( 'Публикация', IBC_TEXTDOMAIN ),
-				'add_new'            => __( 'Добавить новую', IBC_TEXTDOMAIN ),
-				'add_new_item'       => __( 'Добавить новую публикацию', IBC_TEXTDOMAIN ),
-				'edit_item'          => __( 'Редактировать публикацию', IBC_TEXTDOMAIN ),
-				'new_item'           => __( 'Новая публикация', IBC_TEXTDOMAIN ),
-				'view_item'          => __( 'Посмотреть публикацию', IBC_TEXTDOMAIN ),
-				'search_items'       => __( 'Найти публикацию', IBC_TEXTDOMAIN ),
-				'not_found'          => __( 'Публикаций не найдено', IBC_TEXTDOMAIN ),
-				'not_found_in_trash' => __( 'В корзине публикаций не найдено', IBC_TEXTDOMAIN ),
-				'parent_item_colon'  => '',
-				'menu_name'          => __( 'Публикации', IBC_TEXTDOMAIN ),
-
-			  ),
-			'public'                 => true,
-			'publicly_queryable'     => true,
-			'show_ui'                => true,
-			'show_in_menu'           => true,
-			'query_var'              => true,
-			'rewrite'                => true,
-			'capability_type'        => 'post',
-			'has_archive'            => true,
-			'hierarchical'           => false,
-			'menu_position'          => null,
-			'menu_icon'              => 'dashicons-book-alt',
-			'supports'               => array( 'title', 'editor', 'thumbnail' )
-		);
-		$genre_args = array( 
-			'label'                 => '', // определяется параметром $labels->name
-			'labels'                => array(
-				'name'              => __( 'Жанр', IBC_TEXTDOMAIN ),
-				'singular_name'     => __( 'Жанр', IBC_TEXTDOMAIN ),
-				'search_items'      => __( 'Искать жанр', IBC_TEXTDOMAIN ),
-				'all_items'         => __( 'Все жанры', IBC_TEXTDOMAIN ),
-				'view_item '        => __( 'Редактировать жанр', IBC_TEXTDOMAIN ),
-				'parent_item'       => __( 'Родительский жанр', IBC_TEXTDOMAIN ),
-				'parent_item_colon' => __( 'Родительский жанр:', IBC_TEXTDOMAIN ),
-				'edit_item'         => __( 'Редактировать жанр', IBC_TEXTDOMAIN ),
-				'update_item'       => __( 'Обновить запись', IBC_TEXTDOMAIN ),
-				'add_new_item'      => __( 'Добавить новый жанр', IBC_TEXTDOMAIN ),
-				'new_item_name'     => __( 'Новый жанр', IBC_TEXTDOMAIN ),
-				'menu_name'         => __( 'Жанр', IBC_TEXTDOMAIN ),
-			),
-			'description'           => __( 'Записи с уровнем вложения выше второго не учитываются.', IBC_TEXTDOMAIN ), // описание таксономии
-			'public'                => true,
-			'publicly_queryable'    => null, // равен аргументу public
-			'show_in_nav_menus'     => true, // равен аргументу public
-			'show_ui'               => true, // равен аргументу public
-			'show_in_menu'          => true, // равен аргументу show_ui
-			'show_tagcloud'         => true, // равен аргументу show_ui
-			'show_in_quick_edit'    => null, // равен аргументу show_ui
-			'hierarchical'          => true,
-			'rewrite'               => true,
-			'capabilities'          => array(),
-			'meta_box_cb'           => false,
-			'show_admin_column'     => false, // авто-создание колонки таксы в таблице ассоциированного типа записи. (с версии 3.5)
-			'show_in_rest'          => null, // добавить в REST API
-			'rest_base'             => null, // $taxonomy
-		);
-		$autors_args = array( 
-			'label'                 => '', // определяется параметром $labels->name
-			'labels'                => array(
-				'name'              => __( 'Авторы', IBC_TEXTDOMAIN ),
-				'singular_name'     => __( 'Автор', IBC_TEXTDOMAIN ),
-				'search_items'      => __( 'Искать автора', IBC_TEXTDOMAIN ),
-				'all_items'         => __( 'Все авторы', IBC_TEXTDOMAIN ),
-				'view_item '        => __( 'Редактировать запись', IBC_TEXTDOMAIN ),
-				'parent_item'       => __( 'Родительская запись', IBC_TEXTDOMAIN ),
-				'parent_item_colon' => __( 'Родительская запись:', IBC_TEXTDOMAIN ),
-				'edit_item'         => __( 'Редактировать автора', IBC_TEXTDOMAIN ),
-				'update_item'       => __( 'Обновить запись', IBC_TEXTDOMAIN ),
-				'add_new_item'      => __( 'Добавить новыго автора', IBC_TEXTDOMAIN ),
-				'new_item_name'     => __( 'Новый автор', IBC_TEXTDOMAIN ),
-				'menu_name'         => __( 'Авторы', IBC_TEXTDOMAIN ),
-			),
-			'description'           => '', // описание таксономии
-			'public'                => true,
-			'publicly_queryable'    => null, // равен аргументу public
-			'show_in_nav_menus'     => true, // равен аргументу public
-			'show_ui'               => true, // равен аргументу public
-			'show_in_menu'          => true, // равен аргументу show_ui
-			'show_tagcloud'         => true, // равен аргументу show_ui
-			'show_in_quick_edit'    => null, // равен аргументу show_ui
-			'hierarchical'          => false,
-			'rewrite'               => true,
-			'capabilities'          => array(),
-			'meta_box_cb'           => false,
-			'show_admin_column'     => false, // авто-создание колонки таксы в таблице ассоциированного типа записи. (с версии 3.5)
-			'show_in_rest'          => null, // добавить в REST API
-			'rest_base'             => null, // $taxonomy
-		);
-		$publishing_houses_args = array( 
-			'label'                 => '', // определяется параметром $labels->name
-			'labels'                => array(
-				'name'              => __( 'Здательства', IBC_TEXTDOMAIN ),
-				'singular_name'     => __( 'Издательствл', IBC_TEXTDOMAIN ),
-				'search_items'      => __( 'Искать издательство', IBC_TEXTDOMAIN ),
-				'all_items'         => __( 'Все издательства', IBC_TEXTDOMAIN ),
-				'view_item '        => __( 'Редактировать запись', IBC_TEXTDOMAIN ),
-				'parent_item'       => __( 'Родительская запись', IBC_TEXTDOMAIN ),
-				'parent_item_colon' => __( 'Родительская запись:', IBC_TEXTDOMAIN ),
-				'edit_item'         => __( 'Редактировать запись', IBC_TEXTDOMAIN ),
-				'update_item'       => __( 'Обновить запись', IBC_TEXTDOMAIN ),
-				'add_new_item'      => __( 'Добавить новое издательство', IBC_TEXTDOMAIN ),
-				'new_item_name'     => __( 'Новое издательство', IBC_TEXTDOMAIN ),
-				'menu_name'         => __( 'Издательства', IBC_TEXTDOMAIN ),
-			),
-			'description'           => '', // описание таксономии
-			'public'                => true,
-			'publicly_queryable'    => null, // равен аргументу public
-			'show_in_nav_menus'     => true, // равен аргументу public
-			'show_ui'               => true, // равен аргументу public
-			'show_in_menu'          => true, // равен аргументу show_ui
-			'show_tagcloud'         => true, // равен аргументу show_ui
-			'show_in_quick_edit'    => null, // равен аргументу show_ui
-			'hierarchical'          => false,
-			'rewrite'               => true,
-			'capabilities'          => array(),
-			'meta_box_cb'           => false,
-			'show_admin_column'     => false, // авто-создание колонки таксы в таблице ассоциированного типа записи. (с версии 3.5)
-			'show_in_rest'          => null, // добавить в REST API
-			'rest_base'             => null, // $taxonomy
-		);
-		$book_args = array(
-			'public'                 => true,
-			'publicly_queryable'     => true,
-			'show_ui'                => true,
-			'show_in_menu'           => true,
-			'query_var'              => true,
-		);
-		register_post_type( "publication", $publication_args );
-		register_taxonomy( "genre", array( "publication" ), $genre_args );
-		register_taxonomy( "authors", array( "publication" ), $autors_args );
-		register_taxonomy( "publishing_houses", array( "publication" ), $publishing_houses_args );
-	}
 
 
 

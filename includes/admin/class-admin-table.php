@@ -598,28 +598,28 @@ class WP_List_Table {
 
 		$m = isset( $_GET['m'] ) ? (int) $_GET['m'] : 0;
 		?>
-		<label for="filter-by-date" class="screen-reader-text"><?php _e( 'Filter by date' ); ?></label>
-		<select name="m" id="filter-by-date">
-			<option<?php selected( $m, 0 ); ?> value="0"><?php _e( 'All dates' ); ?></option>
-		<?php
-		foreach ( $months as $arc_row ) {
-			if ( 0 == $arc_row->year ) {
-				continue;
-			}
+			<label for="filter-by-date" class="screen-reader-text"><?php _e( 'Filter by date' ); ?></label>
+			<select name="m" id="filter-by-date">
+				<option<?php selected( $m, 0 ); ?> value="0"><?php _e( 'All dates' ); ?></option>
+				<?php
+					foreach ( $months as $arc_row ) {
+						if ( 0 == $arc_row->year ) {
+							continue;
+						}
 
-			$month = zeroise( $arc_row->month, 2 );
-			$year  = $arc_row->year;
+						$month = zeroise( $arc_row->month, 2 );
+						$year  = $arc_row->year;
 
-			printf(
-				"<option %s value='%s'>%s</option>\n",
-				selected( $m, $year . $month, false ),
-				esc_attr( $arc_row->year . $month ),
-				/* translators: 1: Month name, 2: 4-digit year. */
-				sprintf( __( '%1$s %2$d' ), $wp_locale->get_month( $month ), $year )
-			);
-		}
-		?>
-		</select>
+						printf(
+							"<option %s value='%s'>%s</option>\n",
+							selected( $m, $year . $month, false ),
+							esc_attr( $arc_row->year . $month ),
+							/* translators: 1: Month name, 2: 4-digit year. */
+							sprintf( __( '%1$s %2$d' ), $wp_locale->get_month( $month ), $year )
+						);
+					}
+				?>
+			</select>
 		<?php
 	}
 
