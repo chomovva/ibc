@@ -1,0 +1,54 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#ibc {
+
+
+	.form-group {
+		margin: .5em auto;
+	}
+
+
+	label {
+		display: block;
+	}
+
+	input[ type="text" ] {
+		display: block;
+		width: 100%;
+	}
+
+
+	.text-danger {
+		color: red;
+		font-weight: bold;
+	}
+
+
+	fieldset {
+		display: block;
+		padding: .5em;
+		margin: .5em auto;
+		position: relative;
+		border: 1px solid #aaa;
+	}
+
+	select {
+		display: block;
+		width: 100%;
+	}
+
+
+}
