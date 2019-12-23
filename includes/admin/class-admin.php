@@ -46,6 +46,8 @@ class Admin {
 	public function add_mu_pages() {
 		$publications_hook = add_menu_page( __( 'Публикации', IBC_TEXTDOMAIN ), __( 'Публикации', IBC_TEXTDOMAIN ), 'manage_options', 'publications', array( $this, 'render_mu_pages' ), 'dashicons-book-alt', '6' );
 		$genres_hook = add_submenu_page( 'publications', __( 'Жанры', IBC_TEXTDOMAIN ), __( 'Жанры', IBC_TEXTDOMAIN ), 'manage_options', 'genres', array( $this, 'render_mu_pages' ) );
+		$authors_hook = add_submenu_page( 'publications', __( 'Авторы', IBC_TEXTDOMAIN ), __( 'Авторы', IBC_TEXTDOMAIN ), 'manage_options', 'authors', array( $this, 'render_mu_pages' ) );
+		$publishing_houses_hook = add_submenu_page( 'publications', __( 'Издательства', IBC_TEXTDOMAIN ), __( 'Издательства', IBC_TEXTDOMAIN ), 'manage_options', 'publishing_houses', array( $this, 'render_mu_pages' ) );
 		add_action( "load-$publications_hook", function () {
 			require_once IBC_INCLUDES . 'admin/class-admin-table-publications.php';
 			$GLOBALS[ 'Publications_List_Table' ] = new Publications_List_Table();
@@ -53,6 +55,14 @@ class Admin {
 		add_action( "load-$genres_hook", function () {
 			require_once IBC_INCLUDES . 'admin/class-admin-table-genres.php';
 			$GLOBALS[ 'Genres_List_Table' ] = new Genres_List_Table();
+		} );
+		add_action( "load-$authors_hook", function () {
+			require_once IBC_INCLUDES . 'admin/class-admin-table-authors.php';
+			$GLOBALS[ 'Authors_List_Table' ] = new Authors_List_Table();
+		} );
+		add_action( "load-$publishing_houses_hook", function () {
+			require_once IBC_INCLUDES . 'admin/class-admin-table-publishing-houses.php';
+			$GLOBALS[ 'Publishing_Houses_List_Table' ] = new Publishing_Houses_List_Table();
 		} );
 	}
 
@@ -72,6 +82,14 @@ class Admin {
 			$action = 'genres';
 			$nonce = wp_create_nonce( 'genres' );
 			include IBC_VIEWS . 'tables/genres.php';
+		} elseif ( preg_match( '/authors-network$/', $screen->id ) ) {
+			$action = 'authors';
+			$nonce = wp_create_nonce( 'authors' );
+			include IBC_VIEWS . 'tables/authors.php';
+		} elseif ( preg_match( '/publishing_houses-network$/', $screen->id ) ) {
+			$action = 'publishing_houses';
+			$nonce = wp_create_nonce( 'publishing_houses' );
+			include IBC_VIEWS . 'tables/publishing-houses.php';
 		}
 	}
 

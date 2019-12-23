@@ -132,7 +132,15 @@
 				</script>
 			</div>
 			<div class="col-xs-12 col-sm-6">
-				<!-- <img src="<?php echo IBC_ASSETS; ?>images/reader.png"> -->
+				<figure>
+					<?php if ( $sex == 'male' ) : ?>
+						<img src="<?php echo IBC_ASSETS . 'images/male.svg' ?>" style="display: block; width: 100%;">
+					<?php elseif ( $sex = 'female' ) : ?>
+						<img src="<?php echo IBC_ASSETS . 'images/female.svg' ?>" style="display: block; width: 100%;">
+					<?php else : ?>
+						<img src="<?php echo IBC_ASSETS . 'images/human.svg' ?>" style="display: block; width: 100%;">
+					<?php endif; ?>
+				</figure>
 			</div>
 		</div>
 	<?php elseif ( $tab == 'import' ) : ?>

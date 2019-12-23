@@ -129,7 +129,6 @@ class Setup {
 				first_name varchar(55) DEFAULT "" NOT NULL,
 				last_name varchar(55) DEFAULT "" NOT NULL,
 				middle_name varchar(55) DEFAULT "" NOT NULL,
-				sex varchar(20) DEFAULT "" NOT NULL,
 				PRIMARY KEY (id) ) %2$s;',
 			'publishing_houses' => 'CREATE TABLE %1$s (
 				id bigint(20) NOT NULL AUTO_INCREMENT,
@@ -149,6 +148,9 @@ class Setup {
 				name varchar(200) NOT NULL,
 				parent bigint(20) DEFAULT 0 NOT NULL,
 				PRIMARY KEY (id) ) %2$s;',
+			'relationships' => 'CREATE TABLE %1$s (
+				object_id bigint(20) NOT NULL,
+				property_id bigint(20) NOT NULL ) %2$s;',
 		);
 		foreach ( $sql_formats as $key => $format ) {
 			$table_name = sprintf(

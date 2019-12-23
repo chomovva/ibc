@@ -18,37 +18,50 @@
 	<?php if ( $tab == 'edit' || $tab == 'add' ) : ?>
 
 		<form id="issuances-form">
-			<div class="row middle-xs">
-				<div class="col-xs-12 col-sm-4">
-					<label for="reader"><?php _e( 'Читатель', IBC_TEXTDOMAIN ); ?></label>
+			<div class="row">
+				<div class="col-xs-12 col-sm-6">
+					<figure>
+						<img src="<?php echo IBC_ASSETS . 'images/issuance.svg' ?>" style="display: block; width: 100%;">
+					</figure>
 				</div>
-				<div class="col-xs-12 col-sm-8">
-					<?php $this->wp_dropdown_readers(); ?>
+				<div class="col-xs-12 col-sm-6 first-sm">
+					<div class="row middle-xs">
+						<div class="col-xs-12 col-sm-4">
+							<label for="reader"><?php _e( 'Читатель', IBC_TEXTDOMAIN ); ?></label>
+						</div>
+						<div class="col-xs-12 col-sm-8">
+							<?php $this->wp_dropdown_readers(); ?>
+						</div>
+					</div>
+					<div class="row middle-xs">
+						<div class="col-xs-12 col-sm-4">
+							<label for="book"><?php _e( 'Книга', IBC_TEXTDOMAIN ); ?></label>
+						</div>
+						<div class="col-xs-12 col-sm-4">
+							// список книг
+						</div>
+					</div>
+					<div class="row middle-xs">
+						<div class="col-xs-12 col-sm-3">
+							<label for="clearance_date"><?php _e( 'Дата выдачи', IBC_TEXTDOMAIN ); ?></label>
+						</div>
+						<div class="col-xs-12 col-sm-3">
+							<input type="date" name="clearance_date" value="">
+						</div>
+						<div class="col-xs-12 col-sm-3">
+							<label for="return_date"><?php _e( 'Дата возврата', IBC_TEXTDOMAIN ); ?></label>
+						</div>
+						<div class="col-xs-12 col-sm-3">
+							<input id="return_date" type="date" name="return_date" value="">
+						</div>
+					</div>
+					<div class="row">
+						<div class="col-xs-12">
+							<?php submit_button(); ?>
+						</div>
+					</div>
 				</div>
 			</div>
-			<div class="row middle-xs">
-				<div class="col-xs-12 col-sm-4">
-					<label for="book"><?php _e( 'Книга', IBC_TEXTDOMAIN ); ?></label>
-				</div>
-				<div class="col-xs-12 col-sm-4">
-					// список книг
-				</div>
-			</div>
-			<div class="row middle-xs">
-				<div class="col-xs-12 col-sm-2 col-sm-offset-4">
-					<label for="clearance_date"><?php _e( 'Дата выдачи', IBC_TEXTDOMAIN ); ?></label>
-				</div>
-				<div class="col-xs-12 col-sm-2">
-					<input type="date" name="clearance_date" value="">
-				</div>
-				<div class="col-xs-12 col-sm-2">
-					<label for="return_date"><?php _e( 'Дата возврата', IBC_TEXTDOMAIN ); ?></label>
-				</div>
-				<div class="col-xs-12 col-sm-2">
-					<input id="return_date" type="date" name="return_date" value="">
-				</div>
-			</div>
-			<?php submit_button(); ?>
 		</form>
 	
 	<?php elseif ( $tab == 'archive' ) : ?>

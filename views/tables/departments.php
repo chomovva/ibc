@@ -32,33 +32,42 @@
 		?>
 		<form id="department-form-edit">
 			<input type="hidden" name="department_id" value="<?php echo $department_id; ?>">
-			<div class="row middle-xs" style="margin: .5em 0;">
-				<div class="col-xs-12 col-sm-3">
-					<label for="name"><?php _e( 'Название', IBC_TEXTDOMAIN ); ?></label>
+			<div class="row">
+				<div class="col-xs-12 col-sm-6">
+					<figure>
+						<img src="<?php echo IBC_ASSETS . 'images/departments.svg' ?>" style="display: block; width: 100%;">
+					</figure>
 				</div>
-				<div class="col-xs-12 col-sm-3">
-					<input style="width: 100%;" id="name" type="text" name="name" value="<?php echo $name; ?>" placeholder="<?php esc_attr_e( 'Название', IBC_TEXTDOMAIN ); ?>" required="required">
-				</div>
-			</div>
-			<div class="row middle-xs" style="margin: .5em 0;">
-				<div class="col-xs-12 col-sm-3">
-					<label for="parent"><?php _e( 'Родительское подразделение', IBC_TEXTDOMAIN ); ?></label>
-				</div>
-				<div class="col-xs-12 col-sm-3">
-					<?php
-						$this->wp_dropdown_departments( array(
-							'name'     => 'parent',
-							'selected' => $parent,
-							'exclude'  => $department_id,
-							'parent'   => 0,
-							'style'    => 'display: block; width: 100%;'
-						) );
-					?>
-				</div>
-			</div>
-			<div class="row middle-xs" style="margin: .5em 0;">
-				<div class="col-xs-6">
-					<?php submit_button( __( 'Сохранить', IBC_TEXTDOMAIN ) ); ?>
+				<div class="col-xs-12 col-sm-6 first-sm">
+					<div class="row middle-xs" style="margin: .5em 0;">
+						<div class="col-xs-12 col-sm-4">
+							<label for="name"><?php _e( 'Название', IBC_TEXTDOMAIN ); ?></label>
+						</div>
+						<div class="col-xs-12 col-sm-8">
+							<input style="width: 100%;" id="name" type="text" name="name" value="<?php echo $name; ?>" placeholder="<?php esc_attr_e( 'Название', IBC_TEXTDOMAIN ); ?>" required="required">
+						</div>
+					</div>
+					<div class="row middle-xs" style="margin: .5em 0;">
+						<div class="col-xs-12 col-sm-4">
+							<label for="parent"><?php _e( 'Родительское подразделение', IBC_TEXTDOMAIN ); ?></label>
+						</div>
+						<div class="col-xs-12 col-sm-8">
+							<?php
+								$this->wp_dropdown_departments( array(
+									'name'     => 'parent',
+									'selected' => $parent,
+									'exclude'  => $department_id,
+									'parent'   => 0,
+									'style'    => 'display: block; width: 100%;'
+								) );
+							?>
+						</div>
+					</div>
+					<div class="row middle-xs" style="margin: .5em 0;">
+						<div class="col-xs-6">
+							<?php submit_button( __( 'Сохранить', IBC_TEXTDOMAIN ) ); ?>
+						</div>
+					</div>
 				</div>
 			</div>
 		</form>
