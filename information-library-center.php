@@ -55,6 +55,8 @@ class Setup {
 	protected static $instance;
 
 
+	protected $db;
+
 
 	public static function init() {
 		is_null( self::$instance ) AND self::$instance = new self;
@@ -68,11 +70,9 @@ class Setup {
 		$plugin = isset( $_REQUEST[ 'plugin' ] ) ? $_REQUEST[ 'plugin' ] : '';
 		check_admin_referer( "activate-plugin_{$plugin}" );
 		$sites = get_sites();
-		self::create_main_tables();
-		if ( is_array( $sites ) && ! empty( $sites ) ) {
+		if ( is_array( $sites ) ) {
 			foreach ( $sites as $site ) {
-				self::add_roles( $site );
-				self::create_sites_tables( $site );
+				$this->add_role( $site );
 			}
 		}
 	}
@@ -85,9 +85,9 @@ class Setup {
 		$plugin = isset( $_REQUEST[ 'plugin' ] ) ? $_REQUEST[ 'plugin' ] : '';
 		check_admin_referer( "deactivate-plugin_{$plugin}" );
 		$sites = get_sites();
-		if ( is_array( $sites ) && ! empty( $sites ) ) {
+		if ( is_array( $sites ) ) {
 			foreach ( $sites as $site ) {
-				self::remove_roles( $site );
+				$this->remove_roles( $site );
 			}
 		}
 	}
@@ -97,7 +97,11 @@ class Setup {
 	public static function on_uninstall() {
 		if ( ! current_user_can( 'activate_plugins' ) ) return;
 		check_admin_referer( 'bulk-plugins' );
+		// Важно: проверим тот ли это файл, который
+		// был зарегистрирован во время удаления плагина.
 		if ( __FILE__ != WP_UNINSTALL_PLUGIN ) return;
+		// Расcкомментируйте эту строку, чтобы увидеть функцию в действии
+		// exit( var_dump( $_GET ) );
 	}
 
 
@@ -120,9 +124,8 @@ class Setup {
 
 
 
-	protected static function create_main_tables() {
-		global $wpdb;
-		require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
+	protected function create_main_tables() {
+		// require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
 		$sql_formats = array(
 			'authors' => 'CREATE TABLE %1$s (
 				id bigint(20) NOT NULL AUTO_INCREMENT,
@@ -151,34 +154,13 @@ class Setup {
 			'relationships' => 'CREATE TABLE %1$s (
 				object_id bigint(20) NOT NULL,
 				property_id bigint(20) NOT NULL ) %2$s;',
-		);
-		foreach ( $sql_formats as $key => $format ) {
-			$table_name = sprintf(
-				'%1$s%2$s_%3$s',
-				$wpdb->get_blog_prefix(),
-				IBC_SLUG,
-				$key
-			);
-			if ( $wpdb->get_var( "SHOW TABLES LIKE '$table_name'") != $table_name ) {
-				$charset = $wpdb->get_charset_collate();
-				$sql = sprintf( $format, $table_name, $charset );
-				dbDelta( $sql );
-			}
-		}
-	}
-
-
-
-	protected static function create_sites_tables( $site ) {
-		global $wpdb;
-		require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
-		$sql_formats = array(
 			'copies' => 'CREATE TABLE %1$s (
 				id bigint(20) NOT NULL AUTO_INCREMENT,
 				book bigint(20) NOT NULL,
 				date_added datetime NOT NULL,
 				librarian bigint(20) NOT NULL,
 				registration_number varchar(55) DEFAULT "" NOT NULL,
+				blog_id bigint(20) NOT NULL,
 				PRIMARY KEY (id) ) %2$s;',
 			'issuances' => 'CREATE TABLE %1$s (
 				id bigint(20) NOT NULL AUTO_INCREMENT,
@@ -188,11 +170,13 @@ class Setup {
 				clearance_date datetime NOT NULL,
 				return_date datetime NOT NULL,
 				status varchar(10) NOT NULL,
+				blog_id bigint(20) NOT NULL,
 				PRIMARY KEY (id) ) %2$s;',
 			'departments' => 'CREATE TABLE %1$s (
 				id bigint(20) NOT NULL AUTO_INCREMENT,
 				name varchar(200) NOT NULL,
 				parent bigint(20) DEFAULT 0 NOT NULL,
+				blog_id bigint(20) NOT NULL,
 				PRIMARY KEY (id) ) %2$s;',
 			'readers' => 'CREATE TABLE %1$s (
 				id bigint(20) NOT NULL AUTO_INCREMENT,
@@ -204,51 +188,182 @@ class Setup {
 				librarian bigint(20) NOT NULL,
 				department bigint(20),
 				status varchar(10) NOT NULL,
+				blog_id bigint(20) NOT NULL,
 				PRIMARY KEY (id) ) %2$s;',
 		);
 		foreach ( $sql_formats as $key => $format ) {
-			switch_to_blog( $site->blog_id );
-			$table_name = sprintf(
-				'%1$s%2$s_%3$s',
-				$wpdb->get_blog_prefix( $site->blog_id ),
-				IBC_SLUG,
-				$key
-			);
-			if ( $wpdb->get_var( "SHOW TABLES LIKE '$table_name'") != $table_name ) {
-				$charset = $wpdb->get_charset_collate();
+			// $table_name = sprintf(
+			// 	'%1$s%2$s_%3$s',
+			// 	$this->db->get_blog_prefix(),
+			// 	$key
+			// );
+			$table_name = $key;
+			if ( $this->db->get_var( "SHOW TABLES LIKE '$table_name'") != $table_name ) {
+				$charset = $this->db->get_charset_collate();
 				$sql = sprintf( $format, $table_name, $charset );
-				dbDelta( $sql );
+				$this->db->query( $sql );
 			}
-			restore_current_blog();
 		}
 	}
+
+
+
+
+	protected function connect_db() {
+		$result = __return_false();
+		$db_options = get_network_option( NULL, 'ibc_db', false );
+		if ( $db_options ) {
+			$db = new \wpdb(
+				$db_options[ 'user' ],
+				$db_options[ 'password' ],
+				$db_options[ 'name' ],
+				$db_options[ 'host' ]
+			);
+			if ( empty( $db->error ) ) {
+				$result = __return_true();
+				$this->db = $db;
+			} else {
+				$result = new WP_Error( 'ibc_db', $db->error );
+			}
+		} else {
+			$result = new WP_Error( 'ibc_db', __( 'Заполните настройки БД', IBC_TEXTDOMAIN ) );
+		}
+		return $result;
+	}
+
 
 
 
 	public function __construct() {
-		require_once IBC_INCLUDES . 'traits/trait-publications.php';
-		require_once IBC_INCLUDES . 'traits/trait-departments.php';
-		require_once IBC_INCLUDES . 'traits/trait-issuances.php';
-		require_once IBC_INCLUDES . 'traits/trait-controls.php';
-		require_once IBC_INCLUDES . 'traits/trait-readers.php';
-		require_once IBC_INCLUDES . 'traits/trait-genres.php';
-		require_once IBC_INCLUDES . 'traits/trait-copies.php';
-		add_action( 'wp_insert_site', array( $this, 'create_tables' ), 10, 1 );
-		add_action( 'wp_insert_site', array( $this, 'add_roles' ), 10, 1 );
-		add_action( 'plugins_loaded', array( $this, 'textdomain' ) );
-		if ( is_admin() ) {
-			if ( wp_doing_ajax() ) {
-				require_once IBC_INCLUDES . 'ajax/class-ajax.php';
-				new Ajax();
+		add_action( 'network_admin_menu', array( $this, 'add_plugin_page' ) );
+		add_action( 'admin_init', array( $this, 'plugin_settings' ) );
+		if ( ! is_wp_error( $this->connect_db() ) ) {
+			require_once IBC_INCLUDES . 'traits/trait-publications.php';
+			require_once IBC_INCLUDES . 'traits/trait-departments.php';
+			require_once IBC_INCLUDES . 'traits/trait-issuances.php';
+			require_once IBC_INCLUDES . 'traits/trait-controls.php';
+			require_once IBC_INCLUDES . 'traits/trait-readers.php';
+			require_once IBC_INCLUDES . 'traits/trait-genres.php';
+			require_once IBC_INCLUDES . 'traits/trait-copies.php';
+			add_action( 'wp_insert_site', array( $this, 'create_tables' ), 10, 1 );
+			add_action( 'wp_insert_site', array( $this, 'add_roles' ), 10, 1 );
+			add_action( 'plugins_loaded', array( $this, 'textdomain' ) );
+			if ( is_admin() ) {
+				if ( wp_doing_ajax() ) {
+					require_once IBC_INCLUDES . 'ajax/class-ajax.php';
+					new Ajax( $this->db );
+				} else {
+					require_once IBC_INCLUDES . 'admin/class-admin.php';
+					add_action( 'admin_enqueue_scripts', array( $this, 'register_enqueue' ), 10, 0 );
+					new Admin( $this->db );
+				}
 			} else {
-				require_once IBC_INCLUDES . 'admin/class-admin.php';
-				add_action( 'admin_enqueue_scripts', array( $this, 'register_enqueue' ), 10, 0 );
-				new Admin();
+				add_action( 'wp_enqueue_scripts', array( $this, 'register_enqueue' ), 10, 0 );
 			}
-		} else {
-			add_action( 'wp_enqueue_scripts', array( $this, 'register_enqueue' ), 10, 0 );
 		}
 	}
+
+
+
+	public function add_plugin_page() {
+		add_menu_page(
+			__( 'ИБЦ', IBC_TEXTDOMAIN ),
+			__( 'ИБЦ', IBC_TEXTDOMAIN ),
+			'manage_options',
+			IBC_SLUG,
+			array( $this, 'options_page_html' ),
+			IBC_ASSETS . 'images/library.svg',
+			null
+		);
+	}
+
+
+
+	public function options_page_html(){
+		?>
+			<div class="wrap">
+				<h2><?php echo get_admin_page_title() ?></h2>
+				<form method="POST" action="edit.php?action=<?php echo IBC_SLUG; ?>">
+					<?php
+						wp_nonce_field( IBC_SLUG ); // NETWORK - settings_fields() не подходит для мультисайта...
+						do_settings_sections( IBC_SLUG ); // секции с настройками (опциями). У нас она всего одна 'section_id'
+						submit_button( __( 'Создать таблицы и сохранить', IBC_TEXTDOMAIN ) );
+					?>
+				</form>
+			</div>
+		<?php
+	}
+
+
+
+	public function plugin_settings() {
+		// NETWORK - ловим обновления опций через хук 'network_admin_edit_(action)'
+		if ( is_multisite() ) {
+			add_action( 'network_admin_edit_' . IBC_SLUG, array( $this, 'options_update' ) );
+		}
+		register_setting( IBC_SLUG, IBC_SLUG, array( $this, 'sanitize_callback' ) );
+		add_settings_section( 'ibc_db', __( 'Настройки базы данных', IBC_TEXTDOMAIN ), '', IBC_SLUG );
+		$opt_name = 'user';
+		add_settings_field( $opt_name, __( 'Пользоваель', IBC_TEXTDOMAIN ), array( $this, 'fill_field' ), IBC_SLUG, 'ibc_db', $opt_name );
+		$opt_name = 'password';
+		add_settings_field( $opt_name, __( 'Пароль', IBC_TEXTDOMAIN ), array( $this, 'fill_field' ), IBC_SLUG, 'ibc_db', $opt_name );
+		$opt_name = 'name';
+		add_settings_field( $opt_name, __( 'Имя БД', IBC_TEXTDOMAIN ), array( $this, 'fill_field' ), IBC_SLUG, 'ibc_db', $opt_name );
+		$opt_name = 'host';
+		add_settings_field( $opt_name, __( 'Хост БД', IBC_TEXTDOMAIN ), array( $this, 'fill_field' ), IBC_SLUG, 'ibc_db', $opt_name );
+	}
+
+
+
+
+	## Заполняем опцию 1
+	function fill_field( $opt_name ){
+		$opts      = get_site_option( 'ibc_db' ); // NETWORK - не get_option()
+		$name_attr = "ibc_db[$opt_name]";
+		$val       = isset( $opts[ $opt_name ] ) ? $opts[ $opt_name ] : null;
+		echo '<input type="text" name="'. $name_attr .'" value="'. esc_attr( $val ) .'" />';
+	}
+
+
+
+
+	## Очистка сохраняемых данных
+	function sanitize_callback( $options ){
+		foreach( $options as $name => & $value ) {
+			$value = sanitize_text_field( $value );
+		}
+		return $options;
+	}
+
+
+
+	## NETWORK - обновляем опции в БД
+	function options_update() {
+		check_admin_referer( IBC_SLUG );
+		$options = wp_parse_args( wp_unslash( $_POST[ 'ibc_db' ] ), array(
+			'user'     => '',
+			'password' => '',
+			'name'     => '',
+			'host'     => '',
+		) );
+		$connect = __return_false();
+		error_reporting( 0 );
+		$db = @\mysqli_connect( $options[ 'host' ], $options[ 'user' ], $options[ 'password' ], $options[ 'name' ] );
+		if ( $db ) {
+			update_site_option( 'ibc_db', $options );
+			$connect = __return_true();
+			if ( ! is_null( $this->db ) ) {
+				$this->create_main_tables();
+			}
+		}
+		wp_redirect( network_admin_url( sprintf(
+			'settings.php?page=%1$s&updated=true',
+			IBC_SLUG,
+			( $connect ) ? 'true' : 'false'
+		) ) );
+		exit;
+	}
+
 
 
 
@@ -269,6 +384,3 @@ class Setup {
 
 
 }
-
-
-

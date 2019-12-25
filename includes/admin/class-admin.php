@@ -26,6 +26,10 @@ class Admin {
 
 
 
+	protected $db;
+
+
+
 	public static function init() {
 		is_null( self::$instance ) AND self::$instance = new self;
 		return self::$instance;
@@ -33,7 +37,8 @@ class Admin {
 	
 
 
-	function __construct() {
+	function __construct( $db ) {
+		$this->db = $db;
 		add_action( 'admin_menu', array( $this, 'add_admin_pages' ) );
 		add_action( 'admin_init', array( $this, 'admin_tables' ) );
 		if ( is_network_admin() ) {

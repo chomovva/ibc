@@ -20,16 +20,17 @@ class Ajax {
 	protected static $instance;
 
 
+	protected $db;
+
+
 	public static function init() {
 		is_null( self::$instance ) AND self::$instance = new self;
 		return self::$instance;
 	}
 
 
-	function __construct() {
-			// $action = 'readers';
-			// add_action( "wp_ajax_{$action}", array( $this, $action ) );
-			// add_action( "wp_ajax_nopriv_{$action}", array( $this, $action ) );
+	function __construct( $db ) {
+		$this->db = $db;
 		foreach ( array( 'readers', 'departments' ) as $action ) {
 			add_action( "wp_ajax_{$action}", array( $this, $action ) );
 			add_action( "wp_ajax_nopriv_{$action}", array( $this, $action ) );
