@@ -9,9 +9,14 @@ namespace ibc;
 class Publishing_Houses_List_Table extends WP_List_Table {
 
 
+	use PublishingHouses;
 
 
-	function __construct(){
+	protected $db;
+
+
+	function __construct( $db ) {
+		$this->db = $db;
 		parent::__construct( array(
 			'singular' => 'log',
 			'plural'   => 'logs',
@@ -37,7 +42,17 @@ class Publishing_Houses_List_Table extends WP_List_Table {
 			'per_page'    => $per_page,
 		) );
 		$cur_page = (int) $this->get_pagenum(); // желательно после set_pagination_args()
-		$this->items = array();
+		$this->items = __return_empty_array();
+		$publishing_houses = $this->get_publishing_houses();
+		if ( ! empty( $publishing_houses ) ) {
+			foreach ( $publishing_houses as $publishing_house ) {
+				$this->items[] = ( object ) array(
+					'id'            => $publishing_house->id,
+					'name'          => $publishing_house->name,
+					'publications'  => '-',
+				);
+			}
+		}
 	}
 
 
@@ -81,13 +96,13 @@ class Publishing_Houses_List_Table extends WP_List_Table {
 		if ( $colname === 'name' ) {
 			$actions = array();
 			$actions[ 'delete' ] = sprintf(
-				'<a href="#" class="department-action-delete" data-department="%1$s">%2$s</a>',
-				$item->id,
+				'<a href="%1$s">%2$s</a>',
+				$this->get_publishing_house_link( array( 'action' => 'delete', 'id' => $item->id ) ),
 				__( 'Удалить', IBC_TEXTDOMAIN )
 			);
 			$actions[ 'edit' ] = sprintf(
 				'<a href="%1$s">%2$s</a>',
-				add_query_arg( array( 'page' => 'departments', 'tab' => 'edit', 'department_id' => $item->id ), admin_url( 'admin.php?' ) ),
+				$this->get_publishing_house_link( array( 'action' => 'edit', 'id' => $item->id ) ),
 				__( 'Изменить', IBC_TEXTDOMAIN )
 			);
 			return esc_html( $item->name ) . $this->row_actions( $actions );
@@ -106,13 +121,17 @@ class Publishing_Houses_List_Table extends WP_List_Table {
 			case 'delete':
 				if ( is_array( $_POST[ 'licids' ] ) ) {
 					foreach ( $_POST[ 'licids' ] as $id ) {
-						$this->delete_department( $id );
+						$this->delete_publishing_house( $id );
 					}
 				} else {
-					$this->delete_department( $_POST[ 'licids' ] );
+					$this->delete_publishing_house( $_POST[ 'licids' ] );
 				}
+				wp_redirect( $this->get_publishing_house_link( array( 'action' => 'table', 'notice' => __( 'Удалено', IBC_TEXTDOMAIN ) ) ) );
+				exit;
 				break;
 		}
+		wp_redirect( $this->get_publishing_house_link( array( 'action' => 'table' ) ) );
+		exit;
 	}
 
 

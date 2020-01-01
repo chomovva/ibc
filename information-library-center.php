@@ -124,93 +124,7 @@ class Setup {
 
 
 
-	protected function create_main_tables() {
-		// require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
-		$sql_formats = array(
-			'authors' => 'CREATE TABLE %1$s (
-				id bigint(20) NOT NULL AUTO_INCREMENT,
-				first_name varchar(55) DEFAULT "" NOT NULL,
-				last_name varchar(55) DEFAULT "" NOT NULL,
-				middle_name varchar(55) DEFAULT "" NOT NULL,
-				PRIMARY KEY (id) ) %2$s;',
-			'publishing_houses' => 'CREATE TABLE %1$s (
-				id bigint(20) NOT NULL AUTO_INCREMENT,
-				name varchar(200) NOT NULL,
-				PRIMARY KEY (id) ) %2$s;',
-			'publications' => 'CREATE TABLE %1$s (
-				id bigint(20) NOT NULL AUTO_INCREMENT,
-				title varchar(200) NOT NULL,
-				publishing_house bigint(20),
-				annotation varchar(1000) NOT NULL,
-				isbn varchar(15) NOT NULL,
-				year bigint(4) NOT NULL,
-				publishing_houses bigint(20),
-				PRIMARY KEY (id) ) %2$s;',
-			'genres' => 'CREATE TABLE %1$s (
-				id bigint(20) NOT NULL AUTO_INCREMENT,
-				name varchar(200) NOT NULL,
-				parent bigint(20) DEFAULT 0 NOT NULL,
-				PRIMARY KEY (id) ) %2$s;',
-			'relationships' => 'CREATE TABLE %1$s (
-				object_id bigint(20) NOT NULL,
-				property_id bigint(20) NOT NULL ) %2$s;',
-			'copies' => 'CREATE TABLE %1$s (
-				id bigint(20) NOT NULL AUTO_INCREMENT,
-				book bigint(20) NOT NULL,
-				date_added datetime NOT NULL,
-				librarian bigint(20) NOT NULL,
-				registration_number varchar(55) DEFAULT "" NOT NULL,
-				blog_id bigint(20) NOT NULL,
-				PRIMARY KEY (id) ) %2$s;',
-			'issuances' => 'CREATE TABLE %1$s (
-				id bigint(20) NOT NULL AUTO_INCREMENT,
-				copy bigint(20) NOT NULL,
-				reader bigint(20),
-				librarian bigint(20),
-				clearance_date datetime NOT NULL,
-				return_date datetime NOT NULL,
-				status varchar(10) NOT NULL,
-				blog_id bigint(20) NOT NULL,
-				PRIMARY KEY (id) ) %2$s;',
-			'departments' => 'CREATE TABLE %1$s (
-				id bigint(20) NOT NULL AUTO_INCREMENT,
-				name varchar(200) NOT NULL,
-				parent bigint(20) DEFAULT 0 NOT NULL,
-				blog_id bigint(20) NOT NULL,
-				PRIMARY KEY (id) ) %2$s;',
-			'readers' => 'CREATE TABLE %1$s (
-				id bigint(20) NOT NULL AUTO_INCREMENT,
-				card_id varchar(40) NOT NULL,
-				first_name varchar(55) DEFAULT "" NOT NULL,
-				last_name varchar(55) DEFAULT "" NOT NULL,
-				sex varchar(20) DEFAULT "" NOT NULL,
-				date_added datetime NOT NULL,
-				librarian bigint(20) NOT NULL,
-				department bigint(20),
-				status varchar(10) NOT NULL,
-				blog_id bigint(20) NOT NULL,
-				PRIMARY KEY (id) ) %2$s;',
-		);
-		foreach ( $sql_formats as $key => $format ) {
-			// $table_name = sprintf(
-			// 	'%1$s%2$s_%3$s',
-			// 	$this->db->get_blog_prefix(),
-			// 	$key
-			// );
-			$table_name = $key;
-			if ( $this->db->get_var( "SHOW TABLES LIKE '$table_name'") != $table_name ) {
-				$charset = $this->db->get_charset_collate();
-				$sql = sprintf( $format, $table_name, $charset );
-				$this->db->query( $sql );
-			}
-		}
-	}
-
-
-
-
 	protected function connect_db() {
-		$result = __return_false();
 		$db_options = get_network_option( NULL, 'ibc_db', false );
 		if ( $db_options ) {
 			$db = new \wpdb(
@@ -220,8 +134,7 @@ class Setup {
 				$db_options[ 'host' ]
 			);
 			if ( empty( $db->error ) ) {
-				$result = __return_true();
-				$this->db = $db;
+				$result = &$db;
 			} else {
 				$result = new WP_Error( 'ibc_db', $db->error );
 			}
@@ -237,12 +150,15 @@ class Setup {
 	public function __construct() {
 		add_action( 'network_admin_menu', array( $this, 'add_plugin_page' ) );
 		add_action( 'admin_init', array( $this, 'plugin_settings' ) );
-		if ( ! is_wp_error( $this->connect_db() ) ) {
+		$db = $this->connect_db();
+		if ( ! is_wp_error( $db ) ) {
+			require_once IBC_INCLUDES . 'traits/trait-publishing-houses.php';
 			require_once IBC_INCLUDES . 'traits/trait-publications.php';
 			require_once IBC_INCLUDES . 'traits/trait-departments.php';
 			require_once IBC_INCLUDES . 'traits/trait-issuances.php';
 			require_once IBC_INCLUDES . 'traits/trait-controls.php';
 			require_once IBC_INCLUDES . 'traits/trait-readers.php';
+			require_once IBC_INCLUDES . 'traits/trait-authors.php';
 			require_once IBC_INCLUDES . 'traits/trait-genres.php';
 			require_once IBC_INCLUDES . 'traits/trait-copies.php';
 			add_action( 'wp_insert_site', array( $this, 'create_tables' ), 10, 1 );
@@ -251,11 +167,11 @@ class Setup {
 			if ( is_admin() ) {
 				if ( wp_doing_ajax() ) {
 					require_once IBC_INCLUDES . 'ajax/class-ajax.php';
-					new Ajax( $this->db );
+					new Ajax( $db );
 				} else {
 					require_once IBC_INCLUDES . 'admin/class-admin.php';
 					add_action( 'admin_enqueue_scripts', array( $this, 'register_enqueue' ), 10, 0 );
-					new Admin( $this->db );
+					new Admin( $db );
 				}
 			} else {
 				add_action( 'wp_enqueue_scripts', array( $this, 'register_enqueue' ), 10, 0 );
@@ -351,10 +267,8 @@ class Setup {
 		$db = @\mysqli_connect( $options[ 'host' ], $options[ 'user' ], $options[ 'password' ], $options[ 'name' ] );
 		if ( $db ) {
 			update_site_option( 'ibc_db', $options );
-			$connect = __return_true();
-			if ( ! is_null( $this->db ) ) {
-				$this->create_main_tables();
-			}
+			\mysqli_multi_query( $db, file_get_contents( __DIR__ . '/db/structure.sql' ) );
+			mysqli_close( $db );
 		}
 		wp_redirect( network_admin_url( sprintf(
 			'settings.php?page=%1$s&updated=true',

@@ -19,6 +19,8 @@ class Admin {
 	use Readers;
 	use Copies;
 	use Controls;
+	use PublishingHouses;
+	use Authors;
 
 
 
@@ -41,8 +43,62 @@ class Admin {
 		$this->db = $db;
 		add_action( 'admin_menu', array( $this, 'add_admin_pages' ) );
 		add_action( 'admin_init', array( $this, 'admin_tables' ) );
+		add_action( 'current_screen', array( $this, 'operations' ) );
 		if ( is_network_admin() ) {
 			add_action( 'network_admin_menu', array( $this, 'add_mu_pages' ) );
+		}
+	}
+
+
+
+	public function operations() {
+		if ( ! isset( $_REQUEST[ 'page' ] ) || ! isset( $_REQUEST[ 'action' ] ) ) return;
+		switch ( $_REQUEST[ 'page' ] ) {
+			case 'publishing_houses':
+				if ( 'delete' == $_REQUEST[ 'action' ] && isset( $_REQUEST[ 'id' ] ) && ! empty( $_REQUEST[ 'id' ] ) ) {
+					$result = $this->delete_publishing_house( $_REQUEST[ 'id' ] );
+					$notice = ( is_wp_error( $result ) ) ? $result->get_error_message() : __( 'Издательство удалено', IBC_TEXTDOMAIN );
+					wp_redirect( $this->get_publishing_house_link( array( 'action' => 'table', 'notice' => $notice ) ) );
+					exit;
+				} elseif ( 'add' == $_REQUEST[ 'action' ] && isset( $_REQUEST[ 'name' ] ) && ! empty( trim( $_REQUEST[ 'name' ] ) ) ) {
+					$result = $this->add_publishing_house( $_REQUEST[ 'name' ] );
+					$notice = ( is_wp_error( $result ) ) ? $result->get_error_message() : sprintf(
+						__( 'Новое издательство "%1$s" добавлено. <a href="%2$s">Редактировать "%1$s"</a>', IBC_TEXTDOMAIN ),
+						$_REQUEST[ 'name' ],
+						$this->get_publishing_house_link( array( 'action' => 'edit', 'id' => $result ) )
+					);
+					wp_redirect( $this->get_publishing_house_link( array( 'action' => 'add', 'notice' => $notice ) ) );
+					exit;
+				} elseif ( 'edit' == $_REQUEST[ 'action' ] && isset( $_REQUEST[ 'name' ] ) && isset( $_REQUEST[ 'id' ] ) && ! empty( $_REQUEST[ 'id' ] ) ) {
+					$result = $this->update_publishing_house( $_REQUEST[ 'name' ] );
+					$notice = ( is_wp_error( $result ) ) ? $result->get_error_message() : __( 'Издательство обновлено.', IBC_TEXTDOMAIN );
+					wp_redirect( $this->get_publishing_house_link( array( 'action' => 'edit', 'notice' => $notice, 'id' => $result ) ) );
+					exit;
+				}
+				break;
+			case 'authors':
+				if ( 'delete' == $_REQUEST[ 'action' ] && isset( $_REQUEST[ 'id' ] ) && ! empty( $_REQUEST[ 'id' ] ) ) {
+					$result = $this->delete_author( $_REQUEST[ 'id' ] );
+					$notice = ( is_wp_error( $result ) ) ? $result->get_error_message() : __( 'Автор удалён', IBC_TEXTDOMAIN );
+					wp_redirect( $this->get_author_link( array( 'action' => 'table', 'notice' => $notice ) ) );
+					exit;
+				} elseif ( 'add' == $_REQUEST[ 'action' ] && isset( $_REQUEST[ 'first_name' ] ) && isset( $_REQUEST[ 'last_name' ] ) && isset( $_REQUEST[ 'middle_name' ] ) ) {
+					$result = $this->add_author( $_REQUEST[ 'first_name' ], $_REQUEST[ 'last_name' ], $_REQUEST[ 'middle_name' ] );
+					$notice = ( is_wp_error( $result ) ) ? $result->get_error_message() : sprintf(
+						__( 'Автор %1$s %2$s добавлен добавлено. <a href="%3$s">Редактировать</a>', IBC_TEXTDOMAIN ),
+						$_REQUEST[ 'fist_name' ],
+						$_REQUEST[ 'last_name' ],
+						$this->get_author_link( array( 'action' => 'edit', 'id' => $result ) )
+					);
+					wp_redirect( $this->get_author_link( array( 'action' => 'add', 'notice' => $notice ) ) );
+					exit;
+				} elseif ( 'edit' == $_REQUEST[ 'action' ] && isset( $_REQUEST[ 'name' ] ) && isset( $_REQUEST[ 'id' ] ) && ! empty( $_REQUEST[ 'id' ] ) ) {
+					$result = $this->update_author( $_REQUEST[ 'first_name' ], $_REQUEST[ 'last_name' ], $_REQUEST[ 'middle_name' ] );
+					$notice = ( is_wp_error( $result ) ) ? $result->get_error_message() : __( 'Данные автора обновлено.', IBC_TEXTDOMAIN );
+					wp_redirect( $this->get_author_link( array( 'action' => 'edit', 'notice' => $notice, 'id' => $result ) ) );
+					exit;
+				}
+				break;
 		}
 	}
 
@@ -55,19 +111,19 @@ class Admin {
 		$publishing_houses_hook = add_submenu_page( 'publications', __( 'Издательства', IBC_TEXTDOMAIN ), __( 'Издательства', IBC_TEXTDOMAIN ), 'manage_options', 'publishing_houses', array( $this, 'render_mu_pages' ) );
 		add_action( "load-$publications_hook", function () {
 			require_once IBC_INCLUDES . 'admin/class-admin-table-publications.php';
-			$GLOBALS[ 'Publications_List_Table' ] = new Publications_List_Table();
+			$GLOBALS[ 'Publications_List_Table' ] = new Publications_List_Table( $this->db );
 		} );
 		add_action( "load-$genres_hook", function () {
 			require_once IBC_INCLUDES . 'admin/class-admin-table-genres.php';
-			$GLOBALS[ 'Genres_List_Table' ] = new Genres_List_Table();
+			$GLOBALS[ 'Genres_List_Table' ] = new Genres_List_Table( $this->db );
 		} );
 		add_action( "load-$authors_hook", function () {
 			require_once IBC_INCLUDES . 'admin/class-admin-table-authors.php';
-			$GLOBALS[ 'Authors_List_Table' ] = new Authors_List_Table();
+			$GLOBALS[ 'Authors_List_Table' ] = new Authors_List_Table( $this->db );
 		} );
 		add_action( "load-$publishing_houses_hook", function () {
 			require_once IBC_INCLUDES . 'admin/class-admin-table-publishing-houses.php';
-			$GLOBALS[ 'Publishing_Houses_List_Table' ] = new Publishing_Houses_List_Table();
+			$GLOBALS[ 'Publishing_Houses_List_Table' ] = new Publishing_Houses_List_Table( $this->db );
 		} );
 	}
 
@@ -88,12 +144,8 @@ class Admin {
 			$nonce = wp_create_nonce( 'genres' );
 			include IBC_VIEWS . 'tables/genres.php';
 		} elseif ( preg_match( '/authors-network$/', $screen->id ) ) {
-			$action = 'authors';
-			$nonce = wp_create_nonce( 'authors' );
 			include IBC_VIEWS . 'tables/authors.php';
 		} elseif ( preg_match( '/publishing_houses-network$/', $screen->id ) ) {
-			$action = 'publishing_houses';
-			$nonce = wp_create_nonce( 'publishing_houses' );
 			include IBC_VIEWS . 'tables/publishing-houses.php';
 		}
 	}

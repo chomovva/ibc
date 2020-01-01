@@ -7,8 +7,14 @@ namespace ibc;
 class Authors_List_Table extends WP_List_Table {
 
 
+	use Authors;
 
-	function __construct() {
+
+	protected $db;
+
+
+	function __construct( $db ) {
+		$this->db = $db;
 		parent::__construct( array(
 			'singular' => 'log',
 			'plural'   => 'logs',
@@ -25,7 +31,7 @@ class Authors_List_Table extends WP_List_Table {
 	}
 
 
-	function prepare_items(){
+	function prepare_items() {
 		global $wpdb;
 		$per_page = get_user_meta( get_current_user_id(), get_current_screen()->get_option( 'per_page', 'option' ), true ) ?: 20;
 		$this->set_pagination_args( array(
@@ -34,6 +40,18 @@ class Authors_List_Table extends WP_List_Table {
 		) );
 		$cur_page = (int) $this->get_pagenum(); // желательно после set_pagination_args()
 		$this->items = __return_empty_array();
+		$authors = $this->get_authors();
+		if ( ! empty( $authors ) ) {
+			foreach ( $authors as $author ) {
+				$this->items[] = ( object ) array(
+					'id'          => $author->id,
+					'first_name'  => $author->first_name,
+					'last_name'   => $author->last_name,
+					'middle_name' => $author->middle_name,
+					'count'       => '-'
+ 				);
+			}
+		}
 	}
 
 	static function _list_table_css() {
@@ -41,6 +59,7 @@ class Authors_List_Table extends WP_List_Table {
 			<style>
 				table.logs .column-first_name { width: 10em; }
 				table.logs .column-last_name { width: 10em; }
+				table.logs .column-middle_name { width: 10em; }
 				table.logs .column-middle_name { width: 10em; }
 			</style>
 		<?php
@@ -53,6 +72,7 @@ class Authors_List_Table extends WP_List_Table {
 			'first_name'   => __( 'Имя', IBC_TEXTDOMAIN ),
 			'last_name'    => __( 'Фамилия', IBC_TEXTDOMAIN ),
 			'middle_name'  => __( 'Отчество', IBC_TEXTDOMAIN ),
+			'middle_name'  => __( 'Количество публикаций', IBC_TEXTDOMAIN ),
 		);
 	}
 
