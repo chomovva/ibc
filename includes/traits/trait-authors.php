@@ -83,8 +83,15 @@ trait Authors {
 		return ( is_numeric( $result ) && $result > 0 ) ? $this->db->insert_id : new \WP_Error( 'ibcdb', __( 'Новый автор не добавлен', IBC_TEXTDOMAIN ) );
 	}
 
-	function update_author( $id, $name ) {
-		$result = $this->db->update( 'authors', array( 'name' => $name ), array( 'id' => $id ), array( '%s' ), array( '%d' ) );
+	function update_author( $id, $first_name, $last_name, $middle_name ) {
+		$result = $this->db->update(
+			'authors',
+			array(
+				'first_name'   => $first_name,
+				'last_name'    => $last_name,
+				'middle_name'  => $middle_name,
+			),
+			array( 'id' => $id ), array( '%s', '%s', '%s' ), array( '%d' ) );
 		return ( is_numeric( $result ) && $result > 0 ) ? $id : new \WP_Error( 'ibcdb', __( 'Данные автора не обновлены', IBC_TEXTDOMAIN ) );
 	}
 

@@ -9,9 +9,14 @@ namespace ibc;
 class Genres_List_Table extends WP_List_Table {
 
 
+	use Genres;
 
 
-	function __construct(){
+	protected $db;
+
+
+	function __construct( $db ) {
+		$this->db = $db;
 		parent::__construct( array(
 			'singular' => 'log',
 			'plural'   => 'logs',
@@ -37,16 +42,26 @@ class Genres_List_Table extends WP_List_Table {
 			'per_page'    => $per_page,
 		) );
 		$cur_page = (int) $this->get_pagenum(); // желательно после set_pagination_args()
-		$this->items = array();
-		$departments = $this->get_departments();
-		if ( ! empty( $departments ) ) {
-			foreach ( $departments as $department ) {
-				$readers = $this->get_readers( array( 'department' => $department->id ) );
+		$this->items = __return_empty_array();
+		$genres = $this->get_genres();
+		if ( ! empty( $genres ) ) {
+			$parents = wp_list_filter( $genres, array( 'parent' => 0 ) );
+			foreach ( $parents as $parent ) {
 				$this->items[] = ( object ) array(
-					'id'       => $department->id,
-					'name'     => $department->name,
-					'readers'  => count( $readers ),
+					'id'           => $parent->id,
+					'name'         => $parent->name,
+					'publications' => '',
 				);
+				$childs = wp_list_filter( $genres, array( 'parent' => $parent->id ) );
+				if ( ! empty( $childs ) ) {
+					foreach ( $childs as $child ) {
+						$this->items[] = ( object ) array(
+							'id'           => $child->id,
+							'name'         => '— ' . $child->name,
+							'publications' => '',
+						);
+					}
+				}
 			}
 		}
 	}
@@ -93,13 +108,13 @@ class Genres_List_Table extends WP_List_Table {
 		if ( $colname === 'name' ) {
 			$actions = array();
 			$actions[ 'delete' ] = sprintf(
-				'<a href="#" class="department-action-delete" data-department="%1$s">%2$s</a>',
-				$item->id,
+				'<a href="%1$s">%2$s</a>',
+				$this->get_genre_link( array( 'action' => 'delete', 'id' => $item->id ) ),
 				__( 'Удалить', IBC_TEXTDOMAIN )
 			);
 			$actions[ 'edit' ] = sprintf(
 				'<a href="%1$s">%2$s</a>',
-				add_query_arg( array( 'page' => 'departments', 'tab' => 'edit', 'department_id' => $item->id ), admin_url( 'admin.php?' ) ),
+				$this->get_genre_link( array( 'action' => 'edit', 'id' => $item->id ) ),
 				__( 'Изменить', IBC_TEXTDOMAIN )
 			);
 			return esc_html( $item->name ) . $this->row_actions( $actions );
@@ -118,10 +133,10 @@ class Genres_List_Table extends WP_List_Table {
 			case 'delete':
 				if ( is_array( $_POST[ 'licids' ] ) ) {
 					foreach ( $_POST[ 'licids' ] as $id ) {
-						$this->delete_department( $id );
+						$this->delete_genre( $id );
 					}
 				} else {
-					$this->delete_department( $_POST[ 'licids' ] );
+					$this->delete_genre( $_POST[ 'licids' ] );
 				}
 				break;
 		}

@@ -13,61 +13,62 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 trait Publications {
 
 
-
-	function save_publication_postdata( $post_id, $postdata ) {
-		$slug = IBC_SLUG;
-		foreach ( array(
-			'isbn',
-			'year',
-			'genre',
-			'publishing_houses',
-			'authors',
-		) as $key ) {
-			switch ( $key ) {
-				case 'publishing_houses':
-				case 'authors':
-				case 'genre':
-					$terms = ( isset( $postdata[ $key ] ) && ! empty( $postdata[ $key ] ) ) ? wp_parse_id_list( $postdata[ $key ] ) : array();
-					wp_set_object_terms( $post_id, $terms, "{$slug}_{$key}", false );
-					break;
-				default:
-					if ( isset( $postdata[ $key ] ) && ! empty( $postdata[ $key ] ) ) {
-						update_post_meta( $post_id, "{$slug}_{$key}", sanitize_text_field( $postdata[ $key ] ) );
-					} else {
-						delete_post_meta( $post_id, "{$slug}_{$key}" );
-					}
-					break;
-			}
+	function publications_parse_args( $args ) {
+		$defaults = array(
+			'title' => '',
+			'publishing_house_id' => 0,
+			'annotation' => '',
+			'isbn' => '',
+			'year' => '',
+		);
+		$result = __return_empty_array();
+		foreach ( $defaults as $key => $value ) {
+			$result[ $key ] = ( isset( $args[ $key ] ) ) ? $args[ $key ] : $value;
 		}
+		return $result;
 	}
 
 
 
+	function get_publications( $args = array() ) {
+		return __return_empty_array();
+	}
 
-	function render_publication_metabox( $post, $meta ) {
-		$slug = IBC_SLUG;
-		$textdomain = IBC_TEXTDOMAIN;
-		$isbn = get_post_meta( $post->ID, "{$slug}_isbn", true );
-		$year = get_post_meta( $post->ID, "{$slug}_year", true );
-		$authors_terms = get_terms( array( 'taxonomy' => "{$slug}_authors", 'hide_empty' => false ) );
-		$authors = get_the_terms( $post, "{$slug}_authors" );
-		$authors = ( is_array( $authors ) ) ? wp_list_pluck( $authors, 'term_id' ) : __return_empty_array();
-		$genre_terms = get_terms( array( 'taxonomy' => "{$slug}_genre", 'hide_empty' => false ) );
-		$genre_parents_terms = ( is_array( $genre_terms ) ) ? wp_list_filter( $genre_terms, array( 'parent' => 0 ), 'AND' ) : __return_empty_array();
-		$genre = get_the_terms( $post, "{$slug}_genre" );
-		$genre = ( is_array( $genre ) ) ? wp_list_pluck( $genre, 'term_id' ) : __return_empty_array();
-		$publishing_houses_terms = get_terms( array( 'taxonomy' => "{$slug}_publishing_houses", 'hide_empty' => false ) );
-		$publishing_houses = get_the_terms( $post, "{$slug}_publishing_houses" );
-		$publishing_houses = ( is_array( $publishing_houses ) ) ? wp_list_pluck( $publishing_houses, 'term_id' ) : __return_empty_array();
-		wp_add_inline_script( 'jquery.mask', "jQuery( document ).ready( function () { jQuery( '#isbn' ).mask( '0-000-00000-0' ); } );", 'after' );
-		wp_add_inline_script( 'jquery.mask', "jQuery( document ).ready( function () { jQuery( '#year' ).mask( '0000' ); } );", 'after' );
-		wp_add_inline_script( 'select2', "jQuery( document ).ready( function () { jQuery( '#authors' ).select2(); } );", 'after' );
-		wp_add_inline_script( 'select2', "jQuery( document ).ready( function () { jQuery( '#publishing_house' ).select2(); } );", 'after' );
-		wp_enqueue_script( 'select2' );
-		wp_enqueue_script( 'jquery.mask' );
-		wp_enqueue_style( 'flexboxgrid' );
-		wp_enqueue_style( 'select2' );
-		require_once IBC_VIEWS . 'forms/publication.php';
+
+
+	function add_publication( $args ) {
+		$args = $this->publications_parse_args( $args );
+		extract( $args );
+		// $result = $this->db->insert( 'publications', array(
+		// 	'title' => $title,
+		// 	'publishing_house_id' => ( int ) $publishing_house_id,
+		// 	'annotation' => $annotation,
+		// 	'isbn' => $isbn,
+		// 	'year' => $year,
+		// ), array( '%s', '%d', '%s', '%s', '%s' ) );
+		// echo "<pre>";
+		// var_dump( $args );
+		// echo "</pre>";
+		$sql = $this->db->prepare( 'INSERT INTO publications VALUES ( %s, %d, %s, %s, %s );', $title, $publishing_house_id, $annotation, $isbn, $year );
+		echo "<pre>";
+		var_dump( $sql );
+		echo "</pre>";
+		$result = $this->db->query( $sql );
+		return ( is_numeric( $result ) && $result > 0 ) ? $this->db->insert_id : new \WP_Error( 'ibcdb', __( 'Новая публикация не добавлена', IBC_TEXTDOMAIN ) );
+	}
+
+
+
+	function update_publication( $id, $args ) {
+		$args = $this->publications_parse_args( $args );
+		$result = $this->db->update( 'publications', $args, array( 'id' => $id ), array( '%s', '%d', '%s', '%s', '%s' ), array( '%d' ) );
+		return ( is_numeric( $result ) && $result > 0 ) ? $id : new \WP_Error( 'ibcdb', __( 'Данные публикации не обновлены', IBC_TEXTDOMAIN ) );
+	}
+
+
+
+	function delete_publication() {
+
 	}
 
 

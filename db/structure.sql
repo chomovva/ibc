@@ -38,10 +38,10 @@ CREATE TABLE `authors` (
 -- --------------------------------------------------------
 
 --
--- Структура таблицы `author_relationships`
+-- Структура таблицы `authors_relationships`
 --
 
-CREATE TABLE `author_relationships` (
+CREATE TABLE `authors_relationships` (
   `publication_id` int(20) UNSIGNED NOT NULL,
   `author_id` int(20) UNSIGNED NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
@@ -89,10 +89,10 @@ CREATE TABLE `genres` (
 -- --------------------------------------------------------
 
 --
--- Структура таблицы `genre_relationships`
+-- Структура таблицы `genres_relationships`
 --
 
-CREATE TABLE `genre_relationships` (
+CREATE TABLE `genres_relationships` (
   `publication_id` int(20) UNSIGNED NOT NULL,
   `genre_id` int(20) UNSIGNED NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
@@ -127,7 +127,6 @@ CREATE TABLE `publications` (
   `annotation` text COLLATE utf8mb4_unicode_520_ci NOT NULL,
   `isbn` varchar(20) COLLATE utf8mb4_unicode_520_ci NOT NULL,
   `year` varchar(4) COLLATE utf8mb4_unicode_520_ci NOT NULL,
-  `author_id` int(20) UNSIGNED NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
 
 -- --------------------------------------------------------
@@ -171,9 +170,9 @@ ALTER TABLE `authors`
   ADD PRIMARY KEY (`id`);
 
 --
--- Индексы таблицы `author_relationships`
+-- Индексы таблицы `authors_relationships`
 --
-ALTER TABLE `author_relationships`
+ALTER TABLE `authors_relationships`
   ADD KEY `publication_id` (`publication_id`),
   ADD KEY `author_id` (`author_id`);
 
@@ -202,9 +201,9 @@ ALTER TABLE `genres`
   ADD KEY `parent` (`parent`);
 
 --
--- Индексы таблицы `genre_relationships`
+-- Индексы таблицы `genres_relationships`
 --
-ALTER TABLE `genre_relationships`
+ALTER TABLE `genres_relationships`
   ADD KEY `publication_id` (`publication_id`),
   ADD KEY `genre_id` (`genre_id`);
 
@@ -291,11 +290,11 @@ ALTER TABLE `readers`
 --
 
 --
--- Ограничения внешнего ключа таблицы `author_relationships`
+-- Ограничения внешнего ключа таблицы `authors_relationships`
 --
-ALTER TABLE `author_relationships`
-  ADD CONSTRAINT `author_relationships_ibfk_1` FOREIGN KEY (`author_id`) REFERENCES `authors` (`id`) ON DELETE NO ACTION ON UPDATE CASCADE,
-  ADD CONSTRAINT `author_relationships_ibfk_2` FOREIGN KEY (`publication_id`) REFERENCES `publications` (`id`) ON DELETE NO ACTION ON UPDATE CASCADE;
+ALTER TABLE `authors_relationships`
+  ADD CONSTRAINT `authors_relationships_ibfk_1` FOREIGN KEY (`author_id`) REFERENCES `authors` (`id`) ON DELETE NO ACTION ON UPDATE CASCADE,
+  ADD CONSTRAINT `authors_relationships_ibfk_2` FOREIGN KEY (`publication_id`) REFERENCES `publications` (`id`) ON DELETE NO ACTION ON UPDATE CASCADE;
 
 --
 -- Ограничения внешнего ключа таблицы `copies`
@@ -304,11 +303,11 @@ ALTER TABLE `copies`
   ADD CONSTRAINT `copies_ibfk_1` FOREIGN KEY (`publication_id`) REFERENCES `publications` (`id`) ON UPDATE CASCADE;
 
 --
--- Ограничения внешнего ключа таблицы `genre_relationships`
+-- Ограничения внешнего ключа таблицы `genres_relationships`
 --
-ALTER TABLE `genre_relationships`
-  ADD CONSTRAINT `genre_relationships_ibfk_1` FOREIGN KEY (`publication_id`) REFERENCES `publications` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
-  ADD CONSTRAINT `genre_relationships_ibfk_2` FOREIGN KEY (`genre_id`) REFERENCES `genres` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE `genres_relationships`
+  ADD CONSTRAINT `genres_relationships_ibfk_1` FOREIGN KEY (`publication_id`) REFERENCES `publications` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `genres_relationships_ibfk_2` FOREIGN KEY (`genre_id`) REFERENCES `genres` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
 -- Ограничения внешнего ключа таблицы `publications`

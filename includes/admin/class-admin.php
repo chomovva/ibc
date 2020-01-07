@@ -17,6 +17,7 @@ class Admin {
 	use Publications;
 	use Issuances;
 	use Readers;
+	use Genres;
 	use Copies;
 	use Controls;
 	use PublishingHouses;
@@ -92,10 +93,67 @@ class Admin {
 					);
 					wp_redirect( $this->get_author_link( array( 'action' => 'add', 'notice' => $notice ) ) );
 					exit;
-				} elseif ( 'edit' == $_REQUEST[ 'action' ] && isset( $_REQUEST[ 'name' ] ) && isset( $_REQUEST[ 'id' ] ) && ! empty( $_REQUEST[ 'id' ] ) ) {
-					$result = $this->update_author( $_REQUEST[ 'first_name' ], $_REQUEST[ 'last_name' ], $_REQUEST[ 'middle_name' ] );
+				} elseif (
+					'edit' == $_REQUEST[ 'action' ]
+					&& isset( $_REQUEST[ 'id' ] )
+					&& ! empty( $_REQUEST[ 'id' ] )
+					&& isset( $_REQUEST[ 'first_name' ] )
+					&& isset( $_REQUEST[ 'last_name' ] )
+					&& isset( $_REQUEST[ 'middle_name' ]
+				) ) {
+					$result = $this->update_author( $_REQUEST[ 'id' ], $_REQUEST[ 'first_name' ], $_REQUEST[ 'last_name' ], $_REQUEST[ 'middle_name' ] );
 					$notice = ( is_wp_error( $result ) ) ? $result->get_error_message() : __( 'Данные автора обновлено.', IBC_TEXTDOMAIN );
 					wp_redirect( $this->get_author_link( array( 'action' => 'edit', 'notice' => $notice, 'id' => $result ) ) );
+					exit;
+				}
+				break;
+			case 'genres':
+				if ( 'delete' == $_REQUEST[ 'action' ] && isset( $_REQUEST[ 'id' ] ) && ! empty( $_REQUEST[ 'id' ] ) ) {
+					$result = $this->delete_genre( $_REQUEST[ 'id' ] );
+					$notice = ( is_wp_error( $result ) ) ? $result->get_error_message() : __( 'Жанр удалён', IBC_TEXTDOMAIN );
+					wp_redirect( $this->get_page_link( 'genres', array( 'action' => 'table', 'notice' => $notice ) ) );
+					exit;
+				} elseif ( 'add' == $_REQUEST[ 'action' ] && isset( $_REQUEST[ 'name' ] ) && ! empty( $_REQUEST[ 'name' ] ) && isset( $_REQUEST[ 'parent' ] ) ) {
+					$result = $this->add_genre( $_REQUEST[ 'name' ], $_REQUEST[ 'parent' ] );
+					$notice = ( is_wp_error( $result ) ) ? $result->get_error_message() : sprintf(
+						__( 'Жанр %1$s успешно добавлено. <a href="%2$s">Редактировать</a>', IBC_TEXTDOMAIN ),
+						$_REQUEST[ 'name' ],
+						$this->get_genre_link( array( 'action' => 'edit', 'id' => $result ) )
+					);
+					wp_redirect( $this->get_page_link( 'genres', array( 'action' => 'add', 'notice' => $notice ) ) );
+					exit;
+				} elseif (
+					'edit' == $_REQUEST[ 'action' ]
+					&& isset( $_REQUEST[ 'id' ] )
+					&& ! empty( $_REQUEST[ 'id' ] )
+					&& isset( $_REQUEST[ 'name' ] )
+					&& ! empty( $_REQUEST[ 'name' ] )
+					&& isset( $_REQUEST[ 'parent' ] )
+				) {
+					$result = $this->update_genre( $_REQUEST[ 'id' ], $_REQUEST[ 'name' ], $_REQUEST[ 'parent' ] );
+					$notice = ( is_wp_error( $result ) ) ? $result->get_error_message() : __( 'Жанр обновлён.', IBC_TEXTDOMAIN );
+					wp_redirect( $this->get_page_link( 'genres', array( 'action' => 'edit', 'notice' => $notice, 'id' => $result ) ) );
+					exit;
+				}
+				break;
+			case 'publications':
+				if ( 'delete' == $_REQUEST[ 'action' ] && isset( $_REQUEST[ 'id' ] ) && ! empty( $_REQUEST[ 'id' ] ) ) {
+					$result = $this->delete_publication( $_REQUEST[ 'id' ] );
+					$notice = ( is_wp_error( $result ) ) ? $result->get_error_message() : __( 'Публикация удалёна', IBC_TEXTDOMAIN );
+					wp_redirect( $this->get_page_link( 'publications', array( 'action' => 'table', 'notice' => $notice ) ) );
+					exit;
+				} elseif ( 'add' == $_REQUEST[ 'action' ] && isset( $_REQUEST[ 'query' ] ) ) {
+					$result = $this->add_publication( $_REQUEST[ 'query' ] );
+					$notice = ( is_wp_error( $result ) ) ? $result->get_error_message() : sprintf(
+						__( 'Публикация успешно добавлена. <a href="%1$s">Редактировать</a>', IBC_TEXTDOMAIN ),
+						$this->get_page_link( array( 'action' => 'edit', 'id' => $result ) )
+					);
+					wp_redirect( $this->get_page_link( 'publications', array( 'action' => 'add', 'notice' => $notice ) ) );
+					exit;
+				} elseif ( 'edit' == $_REQUEST[ 'action' ] && isset( $_REQUEST[ 'id' ] ) && ! empty( $_REQUEST[ 'id' ] ) && isset( $_REQUEST[ 'query' ] ) ) {
+					$result = $this->update_publication( $_REQUEST[ 'id' ], $_REQUEST[ 'query' ] );
+					$notice = ( is_wp_error( $result ) ) ? $result->get_error_message() : __( 'Публикация обновлёна.', IBC_TEXTDOMAIN );
+					wp_redirect( $this->get_page_link( array( 'action' => 'edit', 'notice' => $notice, 'id' => $result ) ) );
 					exit;
 				}
 				break;
@@ -136,12 +194,8 @@ class Admin {
 		wp_enqueue_style( 'select2' );
 		wp_add_inline_script( 'select2', "jQuery( '.select2' ).select2();", 'after' );
 		if ( preg_match( '/toplevel_page_publications-network$/', $screen->id ) ) {
-			$action = 'publications';
-			$nonce = wp_create_nonce( 'publications' );
 			include IBC_VIEWS . 'tables/publications.php';
 		} elseif ( preg_match( '/genres-network$/', $screen->id ) ) {
-			$action = 'genres';
-			$nonce = wp_create_nonce( 'genres' );
 			include IBC_VIEWS . 'tables/genres.php';
 		} elseif ( preg_match( '/authors-network$/', $screen->id ) ) {
 			include IBC_VIEWS . 'tables/authors.php';
@@ -158,26 +212,66 @@ class Admin {
 
 
 	public function add_admin_pages() {
-		$readers_hook = add_menu_page( __( 'Читатели', IBC_TEXTDOMAIN ), __( 'Читатели', IBC_TEXTDOMAIN ), 'manage_options', 'readers', array( $this, 'render_page' ), 'dashicons-groups', 34 );
-		$departments_hook = add_submenu_page( 'readers', __( 'Подразделенния', IBC_TEXTDOMAIN ), __( 'Подразделенния', IBC_TEXTDOMAIN ), 'manage_options', 'departments', array( $this, 'render_page' ) );
-		$issuances_hook = add_menu_page( __( 'Выдачи', IBC_TEXTDOMAIN ), __( 'Выдачи', IBC_TEXTDOMAIN ), 'manage_options', 'issuances', array( $this, 'render_page' ), 'dashicons-download', 36 );
+		// $readers_hook = add_menu_page( __( 'Читатели', IBC_TEXTDOMAIN ), __( 'Читатели', IBC_TEXTDOMAIN ), 'manage_options', 'readers', array( $this, 'render_page' ), 'dashicons-groups', 34 );
+		// $departments_hook = add_submenu_page( 'readers', __( 'Подразделенния', IBC_TEXTDOMAIN ), __( 'Подразделенния', IBC_TEXTDOMAIN ), 'manage_options', 'departments', array( $this, 'render_page' ) );
+		// $issuances_hook = add_menu_page( __( 'Выдачи', IBC_TEXTDOMAIN ), __( 'Выдачи', IBC_TEXTDOMAIN ), 'manage_options', 'issuances', array( $this, 'render_page' ), 'dashicons-download', 36 );
 		// $copies_hook = add_menu_page( __( 'Фонды', IBC_TEXTDOMAIN ), __( 'Фонды', IBC_TEXTDOMAIN ), 'manage_options', 'copies', array( $this, 'render_page' ), 'dashicons-welcome-add-page', 35 );
 		// $add_issuances_hook = add_submenu_page( 'issuances', __( 'Оформление выдачи', IBC_TEXTDOMAIN ), __( 'Оформление выдачи', IBC_TEXTDOMAIN ), 'manage_options', 'add_issuances', array( $this, 'render_page' ) );
 		// add_action( "load-$copies_hook", array( $this, 'copies_table_load' ) );
 		// add_action( "load-$readers_hook", array( $this, 'readers_table_load' ) );
 		// add_action( "load-$issuances_hook", array( $this, 'issuances_table_load' ) );
-		add_action( "load-$departments_hook", function () {
-			require_once IBC_INCLUDES . 'admin/class-admin-table-departments.php';
-			$GLOBALS[ 'Departments_List_Table' ] = new Departments_List_Table();
-		} );
-		add_action( "load-$readers_hook", function () {
-			require_once IBC_INCLUDES . 'admin/class-admin-table-readers.php';
-			$GLOBALS[ 'Readers_List_Table' ] = new Readers_List_Table();
-		} );
-		add_action( "load-$issuances_hook", function () {
-			require_once IBC_INCLUDES . 'admin/class-admin-table-issuances.php';
-			$GLOBALS[ 'Issuances_List_Table' ] = new Issuances_List_Table();
-		} );
+		// add_action( "load-$departments_hook", function () {
+		// 	require_once IBC_INCLUDES . 'admin/class-admin-table-departments.php';
+		// 	$GLOBALS[ 'Departments_List_Table' ] = new Departments_List_Table();
+		// } );
+		// add_action( "load-$readers_hook", function () {
+		// 	require_once IBC_INCLUDES . 'admin/class-admin-table-readers.php';
+		// 	$GLOBALS[ 'Readers_List_Table' ] = new Readers_List_Table();
+		// } );
+		// add_action( "load-$issuances_hook", function () {
+		// 	require_once IBC_INCLUDES . 'admin/class-admin-table-issuances.php';
+		// 	$GLOBALS[ 'Issuances_List_Table' ] = new Issuances_List_Table();
+		// } );
+	}
+
+
+
+
+	public function get_page_link( $page, $args = array() ) {
+		$args = wp_parse_args( $args, array(
+			'action'      => 'table',
+			'nonce'       => '',
+			'id'          => '',
+			'notice'      => '',
+		) );
+		if ( in_array( $args[ 'action' ], array( 'table', 'add', 'edit', 'delete' ) ) ) {
+			if ( empty( $args[ 'nonce' ] ) ) {
+				$args[ 'nonce' ] = wp_create_nonce( $page );
+			}
+		} else {
+			$args[ 'action' ] = 'table';
+		}
+		return add_query_arg(
+			array(
+				'page'    => $page,
+				'action'  => $args[ 'action' ],
+				'nonce'   => $args[ 'nonce' ],
+				'id'      => $args[ 'id' ],
+				'notice'  => urlencode( $args[ 'notice' ] ),
+			),
+			( in_array( $page, array(
+				'authors',
+				'publications',
+				'publishing_houses',
+				'genres',
+			) ) ) ? network_admin_url( 'admin.php?' ) : admin_url( 'admin.php?' )
+		);
+	}
+
+
+
+	public function the_page_link( $page, $args = array() ) {
+		echo $this->get_page_link( $page, $args );
 	}
 
 
@@ -189,21 +283,6 @@ class Admin {
 		wp_enqueue_script( 'select2' );
 		wp_enqueue_style( 'select2' );
 		wp_add_inline_script( 'select2', "jQuery( '.select2' ).select2();", 'after' );
-		// $page_title = get_admin_page_title();
-		// $content = __return_empty_string();
-		
-		// 	$content = $this->readers_table_render();
-		// } elseif ( preg_match( '/toplevel_page_copies$/', $screen->id ) ) {
-		// 	$content = $this->copies_table_render();
-		// } elseif ( preg_match( '/page_add_copies$/', $screen->id ) ) {
-		// 	// добавление книги
-		// } elseif ( preg_match( '/settings_page_ibc$/', $screen->id ) ) {
-		// 	ob_start();
-		// 	settings_fields( IBC_SLUG );
-		// 	do_settings_sections( IBC_SLUG );
-		// 	submit_button();
-		// 	$content = ob_get_contents();
-		// 	ob_end_clean();
 		if ( preg_match( '/toplevel_page_readers$/', $screen->id ) ) {
 			$action = 'readers';
 			$nonce = wp_create_nonce( 'readers' );
